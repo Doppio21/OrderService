@@ -10,7 +10,8 @@ var ErrNotFound = errors.New("not found")
 
 //go:generate mockgen -package orderdb -destination db_mock.go . OrderDB
 type OrderDB interface {
-	AddOrder(ctx context.Context, order schema.Order) error
+	SeqNumber(ctx context.Context) (schema.SeqNumber, error)
+	AddOrder(ctx context.Context, order schema.Order, seq schema.SeqNumber) error
 	GetOrder(ctx context.Context, orderUI schema.OrderUID) (schema.Order, error)
 	ListOrders(ctx context.Context) ([]schema.Order, error)
 }

@@ -21,6 +21,7 @@ type CacheDB struct {
 
 	cached      sync.Map
 	cachedCount atomic.Int32
+	seq         atomic.Uint64
 }
 
 func New(cfg Config, deps Dependencies) *CacheDB {
@@ -30,8 +31,12 @@ func New(cfg Config, deps Dependencies) *CacheDB {
 	}
 }
 
-func (c *CacheDB) AddOrder(ctx context.Context, order schema.Order) error {
-	if err := c.deps.Persistent.AddOrder(ctx, order); err != nil {
+func (c *CacheDB) SeqNumber(_ context.Context) (schema.SeqNumber, error) {
+	return schema.SeqNumber(c.seq.Load()), nil
+}
+
+func (c *CacheDB) AddOrder(ctx context.Context, order schema.Order, seq schema.SeqNumber) error {
+	if err := c.deps.Persistent.AddOrder(ctx, order, seq); err != nil {
 		return err
 	}
 
@@ -65,9 +70,15 @@ func (c *CacheDB) Restore(ctx context.Context) error {
 		return err
 	}
 
+	seq, err := c.deps.Persistent.SeqNumber(ctx)
+	if err != nil {
+		return err
+	}
+
 	for _, order := range res {
 		c.cached.Store(order.OrderUID, order)
 	}
 
+	c.seq.Store(uint64(seq))
 	return nil
 }

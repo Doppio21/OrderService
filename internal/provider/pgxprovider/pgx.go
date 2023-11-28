@@ -5,18 +5,11 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 const (
 	defaultConnectTimeout = 2 * time.Second
 )
-
-type PGXInterface interface {
-	Exec(ctx context.Context, sql string, arguments ...any) (commandTag pgconn.CommandTag, err error)
-	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
-	Close(ctx context.Context) error
-}
 
 type Config struct {
 	URL            string

@@ -2,6 +2,8 @@ package schema
 
 type OrderUID string
 
+type SeqNumber uint64
+
 type Order struct {
 	OrderUID        OrderUID `json:"order_uid"`
 	TrackNumber     string   `json:"track_number"`

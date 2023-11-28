@@ -52,6 +52,11 @@ func main() {
 		ordercache.Dependencies{
 			Persistent: db,
 		})
+	if err = cache.Restore(ctx); err != nil {
+		log.Errorf("cache restore error: %v", err)
+		return
+	}
+	log.Info("service restored")
 
 	np, err := natsprovider.New(natsprovider.Config{
 		StanClusterID: os.Getenv("STAN_CLUSTER_ID"),
@@ -73,7 +78,7 @@ func main() {
 			NSProvider: np,
 			Store:      cache,
 		})
-	if err := eventConsumer.SubscribeOnOrder(); err != nil {
+	if err := eventConsumer.SubscribeOnOrder(ctx); err != nil {
 		log.Errorf("failed to subscribe on order: %v", err)
 		return
 	}
@@ -85,10 +90,6 @@ func main() {
 			Log: log,
 			DB:  cache,
 		})
-	if err = cache.Restore(ctx); err != nil {
-		log.Errorf("cache restore error: %v", err)
-		return
-	}
 
 	if err = server.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 		log.Errorf("failed to run server: %v", err)

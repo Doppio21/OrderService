@@ -35,7 +35,7 @@ func TestAddGet(t *testing.T) {
 			setup: func(db *orderdb.MockOrderDB) {
 				order := testOrder
 				order.OrderUID = "key1"
-				db.EXPECT().AddOrder(gomock.Any(), order)
+				db.EXPECT().AddOrder(gomock.Any(), order, 0)
 			},
 		},
 		{
@@ -45,7 +45,7 @@ func TestAddGet(t *testing.T) {
 			setup: func(db *orderdb.MockOrderDB) {
 				order := testOrder
 				order.OrderUID = "key1"
-				db.EXPECT().AddOrder(gomock.Any(), order)
+				db.EXPECT().AddOrder(gomock.Any(), order, 0)
 			},
 		},
 	}
@@ -64,7 +64,7 @@ func TestAddGet(t *testing.T) {
 
 			order := testOrder
 			order.OrderUID = c.setUID
-			err := cache.AddOrder(context.Background(), order)
+			err := cache.AddOrder(context.Background(), order, 0)
 			require.NoError(t, err)
 
 			gotOrder, err := cache.GetOrder(context.Background(), c.getUID)
@@ -94,7 +94,7 @@ func TestList(t *testing.T) {
 			list: testOrder,
 			setup: func(db *orderdb.MockOrderDB) {
 				for _, order := range testOrder {
-					db.EXPECT().AddOrder(gomock.Any(), order)
+					db.EXPECT().AddOrder(gomock.Any(), order, 0)
 				}
 			},
 		},
@@ -113,7 +113,7 @@ func TestList(t *testing.T) {
 			})
 
 			for _, s := range c.set {
-				err := cache.AddOrder(context.Background(), s)
+				err := cache.AddOrder(context.Background(), s, 0)
 				require.NoError(t, err)
 			}
 

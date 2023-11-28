@@ -1,5 +1,13 @@
 CREATE TABLE IF NOT EXISTS orderDB 
 (
-	order_uid VARCHAR(64) PRIMARY KEY,
-	data JSONB
+	order_uid 	VARCHAR(64) PRIMARY KEY,
+	data 		JSONB
 );
+
+CREATE TABLE IF NOT EXISTS seqDB
+(
+	id 			INT PRIMARY KEY,
+	seq			NUMERIC
+);
+
+INSERT INTO seqDB (id, seq) VALUES (1, 0);

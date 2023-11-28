@@ -55,9 +55,14 @@ func (n *NatsOrderStore) PublishOrder(ctx context.Context, order schema.Order) e
 	return nil
 }
 
-func (n *NatsOrderStore) SubscribeOnOrder() error {
+func (n *NatsOrderStore) SubscribeOnOrder(ctx context.Context) error {
 	if n.sub != nil {
 		return errors.New("already subscribed")
+	}
+
+	seq, err := n.deps.Store.SeqNumber(ctx)
+	if err != nil {
+		return err
 	}
 
 	sub, err := n.deps.NSProvider.Subscribe(n.cfg.ChannelName, func(msg *stan.Msg) {
@@ -67,7 +72,8 @@ func (n *NatsOrderStore) SubscribeOnOrder() error {
 			return
 		}
 
-		if err := n.deps.Store.AddOrder(context.Background(), order); err != nil {
+		if err := n.deps.Store.AddOrder(context.Background(), order,
+			schema.SeqNumber(msg.Sequence)); err != nil {
 			return
 		}
 
@@ -76,7 +82,10 @@ func (n *NatsOrderStore) SubscribeOnOrder() error {
 		if err := msg.Ack(); err != nil {
 			n.log.Errorf("failed to ack message: %v", err)
 		}
-	}, stan.SetManualAckMode(), stan.MaxInflight(n.cfg.QueueDepth))
+	},
+		stan.SetManualAckMode(),
+		stan.MaxInflight(n.cfg.QueueDepth),
+		stan.StartAtSequence(uint64(seq+1)))
 
 	if err != nil {
 		return err
@@ -87,8 +96,7 @@ func (n *NatsOrderStore) SubscribeOnOrder() error {
 }
 
 func (n *NatsOrderStore) Unsubscribe() {
-	err := (*n.sub).Unsubscribe()
-	if err != nil {
+	if err := (*n.sub).Unsubscribe(); err != nil {
 		n.log.Errorf("failed to unsubscribe: %v", err)
 	}
 }

@@ -19,7 +19,7 @@ type Config struct {
 
 type Dependencies struct {
 	Log *logrus.Logger
-	PGX pgxprovider.PGXInterface
+	PGX *pgxprovider.PGXProvider
 }
 
 type Postgres struct {
@@ -37,7 +37,33 @@ func New(cfg Config, deps Dependencies) orderdb.OrderDB {
 	}
 }
 
-func (p *Postgres) AddOrder(ctx context.Context, order schema.Order) error {
+func (p *Postgres) SeqNumber(ctx context.Context) (schema.SeqNumber, error) {
+	ctx, cancel := context.WithTimeout(ctx, p.cfg.QueryTimeout)
+	defer cancel()
+
+	res, err := p.deps.PGX.Query(ctx, `SELECT seq FROM seqDB WHERE id = 1`)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, nil
+	} else if err != nil {
+		p.log.Errorf("failed to select seq number: %v", err)
+		return 0, err
+	}
+	defer res.Close()
+
+	var seq schema.SeqNumber
+	for res.Next() {
+		if err = res.Scan(&seq); err != nil {
+			p.log.Errorf("scan failed: %v", err)
+			return 0, err
+		}
+
+		break
+	}
+
+	return seq, nil
+}
+
+func (p *Postgres) AddOrder(ctx context.Context, order schema.Order, seq schema.SeqNumber) error {
 	data, err := json.Marshal(order)
 	if err != nil {
 		return err
@@ -46,10 +72,27 @@ func (p *Postgres) AddOrder(ctx context.Context, order schema.Order) error {
 	ctx, cancel := context.WithTimeout(ctx, p.cfg.QueryTimeout)
 	defer cancel()
 
-	_, err = p.deps.PGX.Exec(ctx, `INSERT INTO orderDB (order_uid, data)
+	txn, err := p.deps.PGX.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		p.log.Errorf("failed to create transaction: %v", err)
+		return err
+	}
+
+	_, err = txn.Exec(ctx, `INSERT INTO orderDB (order_uid, data)
 		VALUES ($1, $2)`, order.OrderUID, data)
 	if err != nil {
 		p.log.Errorf("failed to insert: %v", err)
+		return err
+	}
+
+	_, err = txn.Exec(ctx, `UPDATE seqDB SET seq = $1 WHERE seq < $1`, seq)
+	if err != nil {
+		p.log.Errorf("failed to save seq number: %v", err)
+		return err
+	}
+
+	if err := txn.Commit(ctx); err != nil {
+		p.log.Errorf("failed to commit order transaction: %v", err)
 		return err
 	}
 
@@ -57,12 +100,12 @@ func (p *Postgres) AddOrder(ctx context.Context, order schema.Order) error {
 	return nil
 }
 
-func (p *Postgres) GetOrder(ctx context.Context, orderUI schema.OrderUID) (schema.Order, error) {
+func (p *Postgres) GetOrder(ctx context.Context, orderUID schema.OrderUID) (schema.Order, error) {
 	ctx, cancel := context.WithTimeout(ctx, p.cfg.QueryTimeout)
 	defer cancel()
 
 	res, err := p.deps.PGX.Query(ctx, `SELECT data FROM orderDB
-		WHERE order_uid = &1)`, orderUI)
+		WHERE order_uid = &1)`, orderUID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return schema.Order{}, orderdb.ErrNotFound
 	} else if err != nil {

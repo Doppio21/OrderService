@@ -10,6 +10,6 @@ type OrderPublisher interface {
 }
 
 type OrderConsumer interface {
-	SubscribeOnOrder() error
+	SubscribeOnOrder(context.Context) error
 	Unsubscribe()
 }
