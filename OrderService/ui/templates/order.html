@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Order</title>
+    <style>
+        body {
+            background-color: #757672;
+        }
+
+        form {
+            width: 50%;
+            margin-left: 29%;
+            margin-top: 1%;
+        }
+
+        input {
+            padding: 4px 10px;
+            border: 0;
+            font-size: 16px;
+        }
+
+        .search {
+            width: 75%;
+        }
+
+        .submit {
+            width: 70px;
+            background-color: #6fabd0;
+            color: #ffffff;
+        }
+
+        .order {
+            border: ridge 2px;
+            padding: 5px;
+            width: 50%;
+            margin-top: 1%;
+            margin-left: 25%;
+            min-height: 5em;
+            overflow: auto;
+            height: max-content;
+            height: 50em;
+        }
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+</head>
+
+<body>
+    <h2>Order</h2>
+    <form id="form">
+        <input class="search" type="search" id="search" placeholder="Enter id" aria-label="Search" />
+        <input type="submit" class="submit" value="Search" />
+    </form>
+    <textarea class="order" id="order"></textarea>
+
+    <script>
+        // https://stackoverflow.com/questions/4810841/pretty-print-json-using-javascript
+        function syntaxHighlight(json) {
+            if (typeof json != 'string') {
+                json = JSON.stringify(json, undefined, 2);
+            }
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                var cls = 'number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'key';
+                    } else {
+                        cls = 'string';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'null';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+
+        $("#form").on("submit", function () {
+            var value = document.getElementById("search").value
+            $.ajax({
+                url: `/orders/${value}`,
+                method: 'get',
+                dataType: 'json',
+                success: function (data) {
+                    var out = JSON.stringify(data, undefined, 2)
+                    $('#order').html(out);
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    $('#order').html(xhr.statusText);
+                }
+            });
+            return false;
+        })
+    </script>
+</body>
+
+</html>

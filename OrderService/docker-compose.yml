@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  db:
+    build: "./postgres"
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - '5432:5432'
+    volumes: 
+      - db:/var/lib/postgresql/data
+    networks:
+      - db_net
+  nats:
+    image: "nats-streaming:0.9.2"
+    restart: "always"
+    ports:
+      - '4222:4222'
+    networks:
+      - db_net
+volumes:
+  db:
+    driver: local
+networks:
+  db_net:
+    driver: bridge
